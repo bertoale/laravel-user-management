@@ -8,7 +8,6 @@ Route::get('/', function () {
         : redirect()->route('login');
 });
 
-
 Route::middleware(['web', 'throttle:global'])->group(function () {
     require __DIR__ . '/auth.php';
     require __DIR__ . '/user.php';
