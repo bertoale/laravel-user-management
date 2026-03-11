@@ -1,63 +1,43 @@
-# ---------- Stage 1: Composer dependencies ----------
-FROM composer:2 AS vendor
+# 1. Base image PHP + Apache
+FROM php:8.2-apache
 
-WORKDIR /app
-
-# Copy composer files saja dulu (cache build lebih efisien)
-COPY composer.json composer.lock ./
-
-RUN composer install \
-    --no-dev \
-    --no-scripts \
-    --no-autoloader \
-    --prefer-dist
-
-# Copy seluruh project
-COPY . .
-
-# Generate optimized autoload
-RUN composer dump-autoload --optimize
-
-
-# ---------- Stage 2: PHP + Apache runtime ----------
-FROM php:8.2-apache-alpine
-
-# Install dependencies yang dibutuhkan Laravel
-RUN apk add --no-cache \
-    libpng-dev \
-    libxml2-dev \
-    oniguruma-dev \
-    zip \
+# 2. Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
     unzip \
-    curl \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        mbstring \
-        exif \
-        bcmath \
-        gd
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache rewrite
+# 3. Install PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd
+
+# 4. Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# 5. Set working directory
+WORKDIR /var/www
+
+# 6. Copy project files
+COPY . /var/www
+
+# 7. Install Composer dependencies (production)
+RUN composer install --no-dev --optimize-autoloader
+
+# 8. Set permissions Laravel
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# 9. Enable Apache rewrite
 RUN a2enmod rewrite
 
-# Set working directory
-WORKDIR /var/www/html
+# 10. Apache config: point to Laravel public
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
 
-# Copy project dari stage vendor
-COPY --from=vendor /app /var/www/html
-
-# Set permission Laravel
-RUN chown -R www-data:www-data \
-    storage \
-    bootstrap/cache \
-    && chmod -R 775 \
-    storage \
-    bootstrap/cache
-
-# Apache config untuk Laravel public folder
-RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/httpd.conf
-
+# 11. Expose port
 EXPOSE 80
 
-CMD ["httpd-foreground"]
+# 12. Start Apache in foreground
+CMD ["apache2-foreground"]
