@@ -8,6 +8,9 @@ Route::get('/', function () {
         : redirect()->route('login');
 });
 
-require __DIR__ . '/auth.php';
-require __DIR__ . '/user.php';
-require __DIR__ . '/dashboard.php';
+
+Route::middleware(['web', 'throttle:global'])->group(function () {
+    require __DIR__ . '/auth.php';
+    require __DIR__ . '/user.php';
+    require __DIR__ . '/dashboard.php';
+});

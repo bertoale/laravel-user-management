@@ -12,10 +12,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
+        // middleware global
+        $middleware->append([
+            'throttle:100,1'
+        ]);
+
+        // alias middleware
         $middleware->alias([
             'admin' => AdminMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->create();
