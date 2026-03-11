@@ -8,8 +8,6 @@ services:
       - "8000:80"
     env_file:
       - .env
-    volumes:
-      - .:/var/www
     depends_on:
       - db
 
@@ -24,3 +22,8 @@ services:
       MYSQL_PASSWORD: laravel
     ports:
       - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
